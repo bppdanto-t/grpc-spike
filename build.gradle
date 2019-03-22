@@ -1,0 +1,115 @@
+buildscript {
+  ext {
+    kotlinVersion = '1.3.11'
+    springBootVersion = '2.1.1.RELEASE'
+    grpcVersion = '1.18.0'
+  }
+  repositories {
+    mavenCentral()
+    jcenter()
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+  }
+  dependencies {
+    classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
+    classpath("org.jetbrains.kotlin:kotlin-allopen:${kotlinVersion}")
+    classpath('com.google.protobuf:protobuf-gradle-plugin:0.8.7')
+    classpath('com.github.jengelman.gradle.plugins:shadow:4.0.4')
+  }
+}
+
+apply plugin: 'kotlin'
+apply plugin: 'kotlin-spring'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'com.google.protobuf'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+group = 'com.traveloka.spike'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+compileKotlin {
+  kotlinOptions {
+    freeCompilerArgs = ["-Xjsr305=strict"]
+    jvmTarget = "1.8"
+  }
+}
+compileTestKotlin {
+  kotlinOptions {
+    freeCompilerArgs = ["-Xjsr305=strict"]
+    jvmTarget = "1.8"
+  }
+}
+
+repositories {
+  mavenCentral()
+  jcenter()
+  maven { url "https://repo.spring.io/milestone" }
+}
+
+ext['springCloudVersion'] = 'Greenwich.M3'
+
+dependencies {
+  implementation('org.springframework.boot:spring-boot-starter-web')
+  implementation('org.springframework.boot:spring-boot-starter-actuator')
+  implementation('com.fasterxml.jackson.module:jackson-module-kotlin')
+  implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+  implementation("org.jetbrains.kotlin:kotlin-reflect")
+  implementation('io.github.lognet:grpc-spring-boot-starter:3.0.0')
+  implementation("io.grpc:grpc-netty-shaded:${grpcVersion}")
+  implementation('org.projectlombok:lombok:1.16.20')
+  testImplementation('org.springframework.boot:spring-boot-starter-test')
+}
+
+sourceSets {
+  main {
+    resources {
+      srcDirs 'src/main/resources'
+    }
+    java {
+      srcDir 'src/main/protoGen'
+    }
+  }
+}
+
+protobuf {
+  protoc {
+    artifact = 'com.google.protobuf:protoc:3.5.1'
+  }
+  plugins {
+    grpc {
+      artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+    }
+  }
+
+  generateProtoTasks {
+    ofSourceSet('main').each { task ->
+      task.builtins {
+        java{
+          outputSubDir = 'protoGen'
+        }
+      }
+      task.plugins {
+        grpc {
+          outputSubDir = 'protoGen'
+        }
+      }
+    }
+  }
+  generatedFilesBaseDir = "$projectDir/src/"
+}
+
+task cleanProtoGen{
+  doFirst{
+    delete("$projectDir/src/main/protoGen")
+  }
+}
+clean.dependsOn cleanProtoGen
+
+dependencyManagement {
+  imports {
+    mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+  }
+}
